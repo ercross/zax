@@ -52,6 +52,17 @@ func NewLogger(config LoggerConfig) (*Logger, error) {
 	return &Logger{zap: zapLogger, config: config}, nil
 }
 
+// NewSilentLogger creates a logger that silences all log output
+func NewSilentLogger() (*Logger, error) {
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(zap.FatalLevel + 1)
+	zapLogger, err := config.Build()
+	if err != nil {
+		return nil, err
+	}
+	return &Logger{zap: zapLogger, config: LoggerConfig{}}, nil
+}
+
 func (l *Logger) Info(msg string, fields ...Field) {
 	l.zap.Info(msg, toZapFields(fields)...)
 }
