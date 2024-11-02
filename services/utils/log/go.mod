@@ -1,4 +1,4 @@
-module github.com/ercross/zax/services/utils
+module github.com/ercross/zax/services/utils/log
 
 go 1.23.1
 
