@@ -11,3 +11,7 @@ type Repository interface {
 	ReportCounterfeit(ctx context.Context, report data.ModelCounterfeitReport) error
 	FetchCounterfeitReportsByLocation(ctx context.Context, location data.ScanLocation, sweepRadius int) ([]data.ModelCounterfeitReport, error)
 }
+
+type AccountsService interface {
+	IsAdmin(ctx context.Context, authToken string) error
+}
