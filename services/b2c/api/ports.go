@@ -1,10 +1,13 @@
 package api
 
-import "github.com/ercross/zax/services/b2c/data"
+import (
+	"context"
+	"github.com/ercross/zax/services/b2c/data"
+)
 
 type Repository interface {
-	AuthenticateProduct(code string, option data.ScanOption, location data.ScanLocation) (data.ModelProduct, error)
-	AuthenticateBatch(code string, location data.ScanLocation) (data.ModelProductPackage, error)
-	ReportCounterfeit(report data.ModelCounterfeitReport) error
-	FetchCounterfeitReportsByLocation(location data.ScanLocation, sweepRadius int) ([]data.ModelCounterfeitReport, error)
+	AuthenticateProduct(ctx context.Context, code string, option data.ScanOption, location data.ScanLocation) (data.ModelProduct, error)
+	AuthenticateBatch(ctx context.Context, code string, location data.ScanLocation) (data.ModelProductPackage, error)
+	ReportCounterfeit(ctx context.Context, report data.ModelCounterfeitReport) error
+	FetchCounterfeitReportsByLocation(ctx context.Context, location data.ScanLocation, sweepRadius int) ([]data.ModelCounterfeitReport, error)
 }
