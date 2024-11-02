@@ -7,16 +7,24 @@ import (
 	"net/http"
 )
 
-func addRoutes(mux *chi.Mux, logger *log.Logger, accountsService AccountsService, repo *Repository) http.Handler {
-	mux.Use(middleware.AllowContentType("application/json"))
+func NewServer(reqLoggerBase *log.Logger, accountsService AccountsService, repo *Repository) http.Handler {
+	mux := chi.NewRouter()
+	mux.Use(middleware.RequestID)
+	mux.Use(log.RequestLogger(reqLoggerBase))
+	mux.Use(middleware.Recoverer)
+	mux.Use(middleware.StripSlashes)
 	mux.Use(middleware.SetHeader("Content-Type", "application/json"))
 
-	mux.Mount("/admin", adminRoutes(repo, accountsService, logger))
-	mux.Get("/health", probeHealth())
+	addRoutes(mux, accountsService, repo)
+	return mux
+}
 
-	mux.Post("/authenticate-product", authenticateProduct(repo, logger))
-	mux.Post("/authenticate-batch", authenticateBatch(repo, logger))
-	mux.Post("/report-counterfeit", reportCounterfeit(repo, logger))
+func addRoutes(mux *chi.Mux, accountsService AccountsService, repo *Repository) http.Handler {
+
+	mux.Mount("/admin", adminRoutes(repo, accountsService))
+	mux.Mount("/submit-with-file", largeRequestRoutes(repo))
+	mux.Mount("/authenticate", productAuthenticationRoutes(repo))
+	mux.Get("/health", probeHealth())
 
 	return mux
 }
@@ -24,23 +32,48 @@ func addRoutes(mux *chi.Mux, logger *log.Logger, accountsService AccountsService
 func probeHealth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
-func getCounterfeitReportsByLocation(_ *Repository, _ *log.Logger) http.HandlerFunc {
+func getCounterfeitReportsByLocation(_ *Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
-func authenticateProduct(_ *Repository, _ *log.Logger) http.HandlerFunc {
+func authenticateProduct(_ *Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
-func authenticateBatch(_ *Repository, _ *log.Logger) http.HandlerFunc {
+func authenticateBatch(_ *Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
-func reportCounterfeit(_ *Repository, _ *log.Logger) http.HandlerFunc {
+func reportCounterfeit(_ *Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
 
-func adminRoutes(repo *Repository, accountsService AccountsService, logger *log.Logger) http.Handler {
+func adminRoutes(repo *Repository, accountsService AccountsService) http.Handler {
 	r := chi.NewRouter()
+
+	r.Use(middleware.RequestSize(500 * 1024))
+	r.Use(middleware.AllowContentType("application/json"))
 	r.Use(adminOnly(accountsService))
-	r.Get("/counterfeit-reports", getCounterfeitReportsByLocation(repo, logger))
+
+	r.Get("/counterfeit/reports", getCounterfeitReportsByLocation(repo))
+
+	return r
+}
+
+func largeRequestRoutes(repo *Repository) http.Handler {
+	r := chi.NewRouter()
+
+	r.Use(middleware.AllowContentType("multipart/form-data"))
+	r.Use(middleware.RequestSize(20 << 20)) // 20mb
+
+	r.Post("/counterfeit/report", reportCounterfeit(repo))
+	return r
+}
+
+func productAuthenticationRoutes(repo *Repository) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestSize(500 * 1024))
+	r.Use(middleware.AllowContentType("application/json"))
+
+	r.Post("/product", authenticateProduct(repo))
+	r.Post("/batch", authenticateBatch(repo))
 
 	return r
 }
