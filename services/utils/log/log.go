@@ -3,8 +3,9 @@ package log
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
 	"io"
+	"net/http"
+	"time"
 )
 
 // Level represents the severity of the log message.
@@ -33,6 +34,10 @@ type Logger struct {
 type Field struct {
 	Key   string
 	Value interface{}
+}
+
+func NewField(key string, value interface{}) Field {
+	return Field{Key: key, Value: value}
 }
 
 func NewLogger(config LoggerConfig) (*Logger, error) {
@@ -87,6 +92,25 @@ func (l *Logger) Flush() error {
 	return l.zap.Sync()
 }
 
+// RequestLogger is a middleware that logs HTTP requests
+func RequestLogger(logger *Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			start := time.Now()
+			wrappedWriter := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+			next.ServeHTTP(wrappedWriter, r)
+			logger.Info("Request",
+				NewField("method", r.Method),
+				NewField("url", r.URL.String()),
+				NewField("status", wrappedWriter.statusCode),
+				NewField("client_ip", r.RemoteAddr),
+				NewField("response_time", time.Since(start)),
+			)
+		})
+	}
+}
+
 // toZapFields converts our custom Field type to zap.Field, keeping zap.Field encapsulated.
 func toZapFields(fields []Field) []zap.Field {
 	zapFields := make([]zap.Field, len(fields))
@@ -94,4 +118,16 @@ func toZapFields(fields []Field) []zap.Field {
 		zapFields[i] = zap.Any(field.Key, field.Value)
 	}
 	return zapFields
+}
+
+// responseWriter is a custom http.ResponseWriter to capture the status code.
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+// WriteHeader captures the status code for logging
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
 }
