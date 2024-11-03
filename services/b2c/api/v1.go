@@ -29,22 +29,6 @@ func addRoutes(mux *chi.Mux, accountsService AccountsService, repo *Repository) 
 	return mux
 }
 
-func probeHealth() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {}
-}
-func getCounterfeitReportsByLocation(_ *Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {}
-}
-func authenticateProduct(_ *Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {}
-}
-func authenticateBatch(_ *Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {}
-}
-func reportCounterfeit(_ *Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {}
-}
-
 func adminRoutes(repo *Repository, accountsService AccountsService) http.Handler {
 	r := chi.NewRouter()
 
