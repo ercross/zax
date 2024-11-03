@@ -24,10 +24,12 @@ type DistributedRateLimiter struct {
 
 	// Time window for rate limiting
 	window time.Duration
+
+	ServiceName string
 }
 
 // NewDistributedRateLimiter initializes a new DistributedRateLimiter with connection string, limit, and window.
-func NewDistributedRateLimiter(client *redis.Client, requestLimit int, window time.Duration) *DistributedRateLimiter {
+func NewDistributedRateLimiter(client *redis.Client, requestLimit int, window time.Duration, serviceName string) *DistributedRateLimiter {
 	return &DistributedRateLimiter{
 		client:       client,
 		requestLimit: requestLimit,
@@ -59,7 +61,7 @@ func (rl *DistributedRateLimiter) Middleware(next http.Handler) http.Handler {
 // Allow checks if a request is within the allowed limit for a given IP
 func (rl *DistributedRateLimiter) Allow(ctx context.Context, key string) (bool, error) {
 
-	key = constructRateLimitKey(key)
+	key = rl.constructRateLimitKey(key)
 
 	// Increment the count for the current window
 	count, err := rl.client.Incr(ctx, key).Result()
@@ -78,6 +80,6 @@ func (rl *DistributedRateLimiter) Allow(ctx context.Context, key string) (bool, 
 	return count <= int64(rl.requestLimit), nil
 }
 
-func constructRateLimitKey(key string) string {
-	return fmt.Sprintf("ratelimit:%s", key)
+func (rl *DistributedRateLimiter) constructRateLimitKey(key string) string {
+	return fmt.Sprintf("ratelimit_%s:%s", rl.ServiceName, key)
 }
